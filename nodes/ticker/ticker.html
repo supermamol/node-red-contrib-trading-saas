@@ -1,0 +1,27 @@
+<script type="text/javascript">
+RED.nodes.registerType("trading-ticker", {
+  category: "Trading SaaS",
+  color: "#c5e1a5",
+  defaults: {
+    name: { value: "" },
+    symbol: { value: "AAPL", required: true },
+    timeframe: { value: "1D", required: true }
+  },
+  inputs: 0,
+  outputs: 1,
+  icon: "font-awesome/fa-line-chart",
+  label: function () {
+    return this.name || this.symbol;
+  }
+});
+</script>
+
+<div class="form-row">
+  <label>Symbol</label>
+  <input type="text" id="node-input-symbol">
+</div>
+
+<div class="form-row">
+  <label>Timeframe</label>
+  <input type="text" id="node-input-timeframe">
+</div>

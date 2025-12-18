@@ -1,0 +1,16 @@
+<script type="text/javascript">
+RED.nodes.registerType("trading-backtest", {
+  category: "Trading SaaS",
+  color: "#ffccbc",
+  defaults: {
+    name: { value: "" },
+    color: { value: "#ff9800" }
+  },
+  inputs: 1,
+  outputs: 0,
+  icon: "font-awesome/fa-play",
+  label: function () {
+    return this.name || "Backtest";
+  }
+});
+</script>

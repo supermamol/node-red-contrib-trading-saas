@@ -1,0 +1,22 @@
+<script type="text/javascript">
+RED.nodes.registerType("trading-indicator", {
+  category: "Trading SaaS",
+  color: "#bbdefb",
+  defaults: {
+    name: { value: "" },
+    indicator: { value: "EMA" },
+    length: { value: 20, required: true }
+  },
+  inputs: 1,
+  outputs: 1,
+  icon: "font-awesome/fa-area-chart",
+  label: function () {
+    return this.name || `${this.indicator} ${this.length}`;
+  }
+});
+</script>
+
+<div class="form-row">
+  <label>Length</label>
+  <input type="number" id="node-input-length">
+</div>

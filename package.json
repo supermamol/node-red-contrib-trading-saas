@@ -1,0 +1,23 @@
+{
+  "name": "node-red-contrib-trading-saas",
+  "version": "0.0.5",
+  "description": "Custom Node-RED nodes for Trading SaaS strategies",
+  "keywords": [
+    "node-red",
+    "trading",
+    "backtest",
+    "strategy"
+  ],
+  "node-red": {
+    "nodes": {
+      "trading-ticker": "nodes/ticker/ticker.js",
+      "trading-indicator": "nodes/indicator/indicator.js",
+      "trading-backtest": "nodes/backtest/backtest.js"
+    }
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/supermamol/node-red-contrib-trading-saas.git"
+  }
+}

@@ -4,12 +4,10 @@ module.exports = function (RED) {
     const node = this;
 
     node.on("input", function (msg) {
-      node.log("AST received:");
-      node.log(JSON.stringify(msg.ast, null, 2));
-
-      // plus tard :
-      // POST /backtest/run
+      node.log("AST reçu pour backtest");
+      node.send(msg);
     });
   }
+
   RED.nodes.registerType("trading-backtest", TradingBacktest);
 };

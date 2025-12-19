@@ -1,16 +1,27 @@
 <script type="text/javascript">
 RED.nodes.registerType("trading-backtest", {
   category: "Trading SaaS",
-  color: "#ffccbc",
+  color: "#f2c4a5",
   defaults: {
     name: { value: "" },
-    color: { value: "#ff9800" }
+    initialCapital: { value: 10000, required: true },
+    fee: { value: 0.001, required: true }
   },
   inputs: 1,
   outputs: 0,
-  icon: "font-awesome/fa-play",
+  icon: "play.png",
   label: function () {
     return this.name || "Backtest";
   }
 });
 </script>
+
+<div class="form-row">
+  <label for="node-input-initialCapital">Initial capital</label>
+  <input type="number" id="node-input-initialCapital">
+</div>
+
+<div class="form-row">
+  <label for="node-input-fee">Fee</label>
+  <input type="number" id="node-input-fee" step="0.0001">
+</div>

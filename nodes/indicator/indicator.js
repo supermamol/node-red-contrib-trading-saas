@@ -10,10 +10,12 @@ module.exports = function (RED) {
         params: {
           length: config.length,
           source: "close"
-        }
+        },
+        input: msg.ast
       };
       node.send(msg);
     });
   }
+
   RED.nodes.registerType("trading-indicator", TradingIndicator);
 };

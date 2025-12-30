@@ -1,34 +1,71 @@
 <script type="text/javascript">
-RED.nodes.registerType("trading-ticker", {
-  category: "Trading SaaS",
-  color: "#b6e3b6",
-  defaults: {
-    name: { value: "" },
-
-    symbol: { value: "AAPL", required: true },
-    timeframe: { value: "1h", required: true },
-
-    dsl: {
-      value: {
-        outputType: "price"
+  RED.nodes.registerType('trading-ticker',{
+      category: 'Trading SaaS',
+      color: '#8bc34a',
+      defaults: {
+          name: { value: "" }
+      },
+      inputs: 0,
+      outputs: 1,
+      icon: "font-awesome/fa-line-chart",
+      label: function() {
+          return this.name || "trading-ticker";
       }
-    }
-  },
-  inputs: 0,
-  outputs: 1,
-  icon: "feed.png",
-  label: function () {
-    return this.name || this.symbol || "Ticker";
-  }
-});
-</script>
-
-<div class="form-row">
-  <label for="node-input-symbol">Symbol</label>
-  <input type="text" id="node-input-symbol">
-</div>
-
-<div class="form-row">
-  <label for="node-input-timeframe">Timeframe</label>
-  <input type="text" id="node-input-timeframe">
-</div>
+  });
+  </script>
+  
+  <script type="text/javascript">
+    (function () {
+        if (window.__TRADING_GUARD_LOADED__) return;
+        window.__TRADING_GUARD_LOADED__ = true;
+    
+        console.log("🛡️ [Trading Guard] bootstrap loaded");
+    
+        function installGuard() {
+            if (!RED || !RED.nodes || !RED.view) {
+                setTimeout(installGuard, 50);
+                return;
+            }
+    
+            console.log("🛡️ [Trading Guard] installing guards");
+    
+            /* ===== 1. RÈGLE MÉTIER CAN-LINK (FONDATION) ===== */
+            const originalCanLink = RED.nodes.canLink;
+            RED.nodes.canLink = function (src, dst, srcPort, dstPort) {
+                if (
+                    src?.type === "trading-ticker" &&
+                    dst?.type === "trading-backtest"
+                ) {
+                    return false; // ⛔ BLOQUAGE ABSOLU
+                }
+                return originalCanLink.apply(this, arguments);
+            };
+    
+            /* ===== 2. UX : FEEDBACK UTILISATEUR ===== */
+            const originalAddLink = RED.view.addLink;
+            RED.view.addLink = function () {
+                const link = arguments[0];
+                const srcNode = RED.nodes.node(link?.source?.node);
+                const dstNode = RED.nodes.node(link?.target?.node);
+    
+                if (
+                    srcNode?.type === "trading-ticker" &&
+                    dstNode?.type === "trading-backtest"
+                ) {
+                    RED.notify(
+                        "❌ Connexion interdite : trading-ticker → trading-backtest",
+                        "error"
+                    );
+                    return false;
+                }
+    
+                return originalAddLink.apply(this, arguments);
+            };
+    
+            console.log("✅ [Trading Guard] HARD BLOCK active");
+        }
+    
+        installGuard();
+    })();
+    </script>
+        

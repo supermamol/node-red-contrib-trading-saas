@@ -1,0 +1,64 @@
+<script type="text/javascript">
+  (function () {
+    "use strict";
+  
+    if (window.__TRADING_POLICY_GLOBAL__) return;
+  
+    console.log("[TradingPolicy][GLOBAL] loaded via policy-loader");
+  
+    const ALLOWED = {
+      "trading-ticker": ["trading-indicator"],
+      "trading-indicator": [
+        "trading-indicator",
+        "trading-condition",
+        "trading-backtest"
+      ],
+      "trading-condition": ["trading-backtest"],
+      "trading-backtest": []
+    };
+  
+    function validateAllLinks(origin) {
+      console.log("[TradingPolicy] validateAllLinks:", origin);
+  
+      RED.nodes.eachLink(function (link) {
+        const src = RED.nodes.node(link.source.id);
+        const tgt = RED.nodes.node(link.target.id);
+        if (!src || !tgt) return;
+  
+        if (!(ALLOWED[src.type] || []).includes(tgt.type)) {
+          console.warn(
+            "[TradingPolicy] forbidden",
+            src.type,
+            "→",
+            tgt.type
+          );
+  
+          RED.nodes.removeLink(link);
+          RED.notify(
+            `Connexion interdite : ${src.type} → ${tgt.type}`,
+            "error"
+          );
+        }
+      });
+    }
+  
+    RED.events.on("workspace:change", () => validateAllLinks("workspace"));
+    RED.events.on("links:add", () => validateAllLinks("links"));
+    RED.events.on("nodes:add", () => validateAllLinks("nodes"));
+  
+    setTimeout(() => validateAllLinks("initial"), 0);
+  
+    window.__TRADING_POLICY_GLOBAL__ = true;
+  })();
+  </script>
+  
+  <script type="text/javascript">
+    RED.nodes.registerType("trading-policy-loader", {
+      category: "config",   // 🔑 CLEF ABSOLUE
+      defaults: {},
+      label: function () {
+        return "policy-loader";
+      }
+    });
+  </script>
+  

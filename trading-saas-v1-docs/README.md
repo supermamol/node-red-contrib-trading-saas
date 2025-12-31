@@ -1,147 +1,201 @@
 # Trading SaaS — V1
-## Langage visuel d’analyse et de backtest (Node‑RED)
+
+## Objectif
+
+La V1 fournit un éditeur visuel de stratégies de trading basé sur Node-RED.
+
+Elle permet de :
+- composer un graphe valide
+- décrire une stratégie de trading
+- valider la cohérence structurelle
+- préparer les bases d’un moteur V2
+
+La V1 est déclarative :
+elle décrit des stratégies, elle ne les exécute pas.
 
 ---
 
-## 1. Objectif de la V1
+## Philosophie générale
 
-La **V1** fournit un **langage visuel simple, permissif et cohérent** permettant de :
+Le système repose sur un langage visuel permettant de décrire une stratégie
+de trading sous forme de graphe.
 
-- analyser un marché financier,
-- calculer et chaîner des indicateurs techniques,
-- définir des règles simples,
-- backtester des comportements de marché,
-- sans ambiguïté structurelle,
-- sans stratégie explicite,
-- sans exécution réelle,
-- sans validation bloquante liée au déploiement.
+Un node ne consomme pas des données temps réel :
+il dépend de sources logiques.
 
-👉 **La V1 n’est pas un moteur de trading**, mais un **outil d’analyse et de backtest de comportements**.
+Le graphe est un graphe de dépendances, pas un data-flow strict.
 
 ---
 
-## 2. Philosophie générale
+## Périmètre V1
 
-- Le graphe décrit un **pipeline d’analyse**, pas une stratégie complète.
-- La validation est **design‑time uniquement**.
-- **Aucune validation n’implique un deploy**.
-- Alignement strict avec **Node‑RED**.
-- La complexité est volontairement repoussée en **V2**.
+### Inclus
+- Éditeur Node-RED
+- Validation globale des connexions (policy editor-side)
+- Nodes :
+  - Ticker
+  - Indicator
+  - Condition
+  - Backtest
 
----
-
-## 3. Périmètre fonctionnel
-
-### Inclus en V1
-- Ticker
-- Indicator
-- Condition
-- Backtest
-
-### Hors périmètre (V2)
-- Strategy explicite
-- AND / OR / NOT
-- Risk management
-- Multi‑ticker
-- Multi‑timeframe
-- Exécution réelle
+### Hors V1
+- Exécution temps réel
+- Backtesting financier réel
+- Trading live
+- Gestion du risque
+- Portefeuilles
 
 ---
 
-## 4. Graphe autorisé
-
-Ticker → Indicator* → Condition* → Backtest
-
----
-
-## 5. Nodes
+## Nodes
 
 ### Ticker
-Source unique de marché  
-1 Ticker par flow
+- Type logique : Market
+- Rôle : décrire un marché (symbole, timeframe)
+- Inputs : 0
+- Outputs : 1
 
-Outputs : market  
-Connexions : Ticker → Indicator
-
----
-
-### Indicator (générique V1)
-
-- 1 input unique
-- Connexions multiples autorisées (Node‑RED natif)
-- Sources possibles : Ticker, Indicator(s)
-
-Un indicateur peut dépendre :
-- du marché
-- d’autres indicateurs
-- des deux
-
-Il reçoit toutes les sources disponibles et décide en interne.
-
----
+### Indicator
+- Type logique : Indicator
+- Rôle : décrire un indicateur simple ou composite
+- Inputs : 1 (agrégateur implicite)
+- Outputs : 1
 
 ### Condition
-
-- Entrée : indicators
-- Sortie : boolean
-- Comparaison simple uniquement
-- Pas de logique AND / OR
-
----
+- Type logique : Decision
+- Rôle : exprimer une règle logique
+- Inputs : 1
+- Outputs : 1
 
 ### Backtest
-
-Node terminal
-
-Entrée :
-- indicators → analyse
-- condition → stratégie implicite
+- Type logique : Terminal
+- Rôle : terminal du graphe
+- Inputs : 1
+- Outputs : 0
 
 ---
 
-## 6. Règles de raccordement
+## Inputs & Cardinalité — Spécification V1
 
-Ticker → Indicator  
-Indicator → Indicator  
-Indicator → Condition  
-Indicator → Backtest  
-Condition → Backtest  
+Chaque node expose un input unique.
 
-Tout autre raccordement est interdit.
+Cet input est un agrégateur implicite de sources :
+- 0 source : INCOMPLETE
+- ≥ 1 source : OK
 
----
-
-## 7. Validation (éditeur uniquement)
-
-- La validation n’implique PAS de deploy
-- États possibles :
-  - ok
-  - incomplete
-  - error
-
-Un indicateur est **incomplete** tant que toutes ses sources requises ne sont pas raccordées.
+Il n’existe aucune limite maximale au nombre de connexions entrantes.
 
 ---
 
-## 8. Décisions de design
+## Types logiques de sources
 
-- Input unique avec connexions multiples
-- Validation permissive
-- Responsabilité métier dans les nodes
-- Simplicité V1, extensibilité V2
+- Market : Ticker
+- Indicator : Indicator
+- Decision : Condition
+- Terminal : Backtest
 
----
-
-## 9. V2 (aperçu)
-
-- Strategy explicite
-- AND / OR
-- Ports déclaratifs
-- Multi‑ticker
-- Validation stricte
+Ces types sont conceptuels et non exposés comme ports distincts.
 
 ---
 
-## 10. Résumé
+## Connexions autorisées
 
-La V1 propose un langage visuel simple et cohérent pour analyser et backtester des comportements de marché, aligné avec Node‑RED.
+- Ticker → Indicator
+- Indicator → Indicator
+- Indicator → Condition
+- Indicator → Backtest
+- Condition → Backtest
+
+---
+
+## Connexions interdites
+
+- Ticker → Backtest
+- Condition → Indicator
+- Backtest → *
+- Condition → Condition (V1)
+
+---
+
+## Outputs — Spécification V1
+
+Chaque node (sauf Backtest) expose un output unique.
+
+L’output propage une description enrichie,
+il ne déclenche aucune exécution réelle.
+
+---
+
+## Propagation du message (exemple conceptuel)
+
+{
+  "market": { "symbol": "AAPL", "timeframe": "1D" },
+  "indicators": [
+    { "type": "EMA", "period": 20 },
+    { "type": "RSI", "period": 14 }
+  ],
+  "conditions": [
+    { "operator": ">", "value": 50 }
+  ],
+  "backtest": {
+    "from": "2020-01-01",
+    "to": "2023-01-01"
+  }
+}
+
+---
+
+## Policy globale
+
+Les règles de compatibilité sont définies globalement
+et appliquées editor-side.
+
+La policy :
+- empêche les connexions invalides
+- nettoie les flows existants au chargement
+- garantit la cohérence sémantique du graphe
+
+---
+
+## Node technique interne
+
+Policy Loader :
+- config node
+- non posable dans un flow
+- invisible pour l’utilisateur
+- chargé automatiquement par l’éditeur
+
+---
+
+## Structure du projet
+
+nodes/
+- ticker/
+- indicator/
+- condition/
+- backtest/
+- policy-loader/
+
+---
+
+## Positionnement V1 / V2
+
+V1 :
+- déclaratif
+- linéaire
+- validation structurelle
+
+V2 :
+- exécution réelle
+- branches conditionnelles
+- moteur de trading
+- backtesting avancé
+- live trading
+
+---
+
+## Synthèse
+
+La V1 permet de décrire proprement une stratégie de trading
+via un graphe valide, cohérent et extensible,
+sans exécution réelle.

@@ -7,7 +7,6 @@
 
   "node-red": {
     "nodes": {
-      "trading-policy": "trading-policy.js",
       "trading-ticker": "nodes/ticker/ticker.js",
       "trading-indicator": "nodes/indicator/indicator.js",
       "trading-backtest": "nodes/backtest/backtest.js"

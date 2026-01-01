@@ -1,21 +1,59 @@
 <script type="text/javascript">
-RED.nodes.registerType("trading-indicator", {
-  category: "Trading SaaS",
-  color: "#9ecae1",
-  defaults: {
-    name: { value: "" },
-    length: { value: 20, required: true }
-  },
-  inputs: 1,
-  outputs: 1,
-  icon: "chart.png",
-  label: function () {
-    return this.name || ("EMA " + this.length);
-  }
-});
-</script>
-
-<div class="form-row">
-  <label for="node-input-length">Length</label>
-  <input type="number" id="node-input-length" min="1">
-</div>
+  RED.nodes.registerType("indicator", {
+    category: "Trading SaaS",
+    color: "#A6BBCF",
+    defaults: {
+      name: { value: "" },
+      kind: { value: "EMA", required: true },
+      period: { value: 20, required: true }
+    },
+    inputs: 1,
+    outputs: 1,
+    icon: "font-awesome/fa-signal",
+    label: function () {
+      return this.name || (this.kind + " " + this.period);
+    },
+  
+    oneditprepare: function () {
+      const node = this;
+  
+      function updateState() {
+        const links = RED.nodes.links.filter(
+          l => l.target && l.target.id === node.id
+        );
+  
+        if (links.length === 0) {
+          $("#node-dialog-ok").prop("disabled", true);
+        } else {
+          $("#node-dialog-ok").prop("disabled", false);
+        }
+      }
+  
+      updateState();
+      RED.events.on("links:add", updateState);
+      RED.events.on("links:remove", updateState);
+    }
+  });
+  </script>
+  
+  <script type="text/html" data-template-name="indicator">
+    <div class="form-row">
+      <label for="node-input-name">Name</label>
+      <input type="text" id="node-input-name" placeholder="optional">
+    </div>
+  
+    <div class="form-row">
+      <label for="node-input-kind">Type</label>
+      <select id="node-input-kind">
+        <option value="EMA">EMA</option>
+        <option value="SMA">SMA</option>
+        <option value="RSI">RSI</option>
+      </select>
+    </div>
+  
+    <div class="form-row">
+      <label for="node-input-period">Period</label>
+      <input type="number" id="node-input-period" min="1">
+    </div>
+  </script>
+  

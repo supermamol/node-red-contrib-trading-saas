@@ -1,21 +1,20 @@
 module.exports = function (RED) {
-  function TradingIndicator(config) {
+  function IndicatorNode(config) {
     RED.nodes.createNode(this, config);
-    const node = this;
 
-    node.on("input", function (msg) {
-      msg.ast = {
-        type: "indicator",
-        name: "EMA",
-        params: {
-          length: config.length,
-          source: "close"
-        },
-        input: msg.ast
-      };
-      node.send(msg);
+    this.on("input", function (msg, send, done) {
+      msg.indicators = msg.indicators || [];
+
+      msg.indicators.push({
+        kind: config.kind,
+        period: config.period,
+        name: config.name || null
+      });
+
+      send(msg);
+      if (done) done();
     });
   }
 
-  RED.nodes.registerType("trading-indicator", TradingIndicator);
+  RED.nodes.registerType("indicator", IndicatorNode);
 };

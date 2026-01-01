@@ -1,19 +1,18 @@
 module.exports = function (RED) {
-  function TradingTicker(config) {
+  function TickerNode(config) {
     RED.nodes.createNode(this, config);
-    const node = this;
 
-    node.on("input", function () {
-      node.send({
-        ast: {
-          type: "source",
-          source: "ticker",
-          symbol: config.symbol,
-          timeframe: config.timeframe
-        }
-      });
+    this.on("input", function (msg, send, done) {
+      msg.market = {
+        symbol: config.symbol,
+        timeframe: config.timeframe,
+        name: config.name || null
+      };
+
+      send(msg);
+      if (done) done();
     });
   }
 
-  RED.nodes.registerType("trading-ticker", TradingTicker);
+  RED.nodes.registerType("ticker", TickerNode);
 };

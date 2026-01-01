@@ -1,16 +1,17 @@
 {
   "name": "node-red-contrib-trading-saas",
-  "version": "0.0.20",
+  "version": "0.0.21",
   "description": "Custom Node-RED nodes for Trading SaaS strategies",
   "keywords": ["node-red", "trading", "backtest", "strategy"],
   "license": "MIT",
 
   "node-red": {
     "nodes": {
-      "trading-policy-loader": "nodes/policy-loader/policy-loader.js",
-      "trading-ticker": "nodes/ticker/ticker.js",
-      "trading-indicator": "nodes/indicator/indicator.js",
-      "trading-backtest": "nodes/backtest/backtest.js"
+      "policy-loader": "nodes/policy-loader/policy-loader.js",
+      "ticker": "nodes/ticker/ticker.js",
+      "indicator": "nodes/indicator/indicator.js",
+      "condition": "nodes/condition/condition.js",
+      "backtest": "nodes/backtest/backtest.js"
     }
   }
 }

@@ -1,50 +1,204 @@
 <script type="text/javascript">
   (function () {
-    // état local éditeur (non persisté, comme Debug)
-    const BTN = {};
   
+    /* ============================================================
+     * NODE DEFINITION (EDITOR ONLY)
+     * ============================================================ */
     RED.nodes.registerType("backtest", {
       category: "Trading SaaS",
       color: "#D9A441",
-      defaults: { name: { value: "" } },
+      defaults: {
+        name: { value: "" },
+        ast: { value: null }
+      },
       inputs: 1,
       outputs: 0,
       icon: "font-awesome/fa-flag-checkered",
       align: "right",
-  
-      button: {
-        toggle: true,
-        enabled: function () { return true; },
-        onclick: function () {
-          const id = this.id;
-  
-          // init si besoin
-          if (BTN[id] === undefined) BTN[id] = false;
-  
-          // toggle fiable
-          BTN[id] = !BTN[id];
-          const state = BTN[id];
-  
-          // force la synchro visuelle (important)
-          this._buttonState = state;
-          RED.view.redraw();
-  
-          console.log(state ? "[Backtest] activated (editor)" : "[Backtest] deactivated (editor)");
-  
-          // après deploy, si le runtime est là, on envoie un msg
-          try {
-            const rt = RED.nodes.node(id);
-            if (rt && typeof rt.send === "function") {
-              rt.send({ _control: "toggle", enabled: state });
-            }
-          } catch (e) {
-            // normal avant deploy
-          }
-        }
-      },
-  
-      label: function () { return this.name || "Backtest"; }
+      label: function () {
+        return this.name || "Backtest";
+      }
     });
+  
+    /* ============================================================
+     * SIDEBAR "AST"
+     * ============================================================ */
+    RED.sidebar.addTab({
+      id: "backtest-ast",
+      label: "AST",
+      name: "AST",
+  
+      content: `
+        <div style="padding:10px; height:100%; box-sizing:border-box;">
+          <h3>Backtest AST</h3>
+          <div id="ast-meta" style="margin-bottom:8px; color:#666;"></div>
+          <pre id="ast-viewer"
+               style="
+                 height:calc(100% - 80px);
+                 overflow:auto;
+                 background:#1e1e1e;
+                 color:#d4d4d4;
+                 padding:10px;
+                 border-radius:4px;
+                 font-size:12px;
+               ">
+  Sélectionnez un node Backtest
+          </pre>
+        </div>
+      `
+    });
+  
+    /* ============================================================
+     * GRAPH UTILITIES
+     * ============================================================ */
+    function collectUpstream(nodeId, visited) {
+      if (visited.has(nodeId)) return;
+      visited.add(nodeId);
+  
+      RED.nodes.eachLink(function (l) {
+        if (l.target && l.target.id === nodeId) {
+          collectUpstream(l.source.id, visited);
+        }
+      });
+    }
+  
+    function canGenerateAst(node) {
+      let hasAnyLink = false;
+      RED.nodes.eachLink(function (l) {
+        if (l.source?.id === node.id || l.target?.id === node.id) {
+          hasAnyLink = true;
+        }
+      });
+      return hasAnyLink;
+    }
+  
+    /* ============================================================
+     * AST VALIDATION
+     * ============================================================ */
+    function validateAst(ast) {
+      const errors = [];
+      const hasTicker = Object.values(ast.nodes)
+        .some(n => n.type === "ticker");
+  
+      if (!hasTicker) {
+        errors.push("Aucun ticker en amont du Backtest");
+      }
+      return errors;
+    }
+  
+    /* ============================================================
+     * AST GENERATION
+     * ============================================================ */
+    function generateAst(backtestNode) {
+      const visited = new Set();
+      collectUpstream(backtestNode.id, visited);
+  
+      const ast = {
+        version: "1.0",
+        rootBacktestId: backtestNode.id,
+        nodes: {},
+        links: [],
+        meta: {}
+      };
+  
+      visited.forEach(id => {
+        const n = RED.nodes.node(id);
+        if (!n) return;
+  
+        ast.nodes[id] = {
+          id: n.id,
+          type: n.type,
+          name: n.name || "",
+          inputs: n._def?.inputs ?? 0,
+          outputs: n._def?.outputs ?? 0
+        };
+      });
+  
+      RED.nodes.eachLink(function (l) {
+        if (visited.has(l.source.id) && visited.has(l.target.id)) {
+          ast.links.push({
+            sourceId: l.source.id,
+            sourcePort: l.sourcePort ?? 0,
+            targetId: l.target.id,
+            targetPort: l.targetPort ?? 0
+          });
+        }
+      });
+  
+      const errors = validateAst(ast);
+  
+      ast.meta = {
+        generatedAt: new Date().toISOString(),
+        nodes: Object.keys(ast.nodes).length,
+        links: ast.links.length,
+        valid: errors.length === 0,
+        errors
+      };
+  
+      return ast;
+    }
+  
+    /* ============================================================
+     * DISPLAY AST (TXT)
+     * ============================================================ */
+    function displayAst(ast) {
+      const viewer = $("#ast-viewer");
+      const meta = $("#ast-meta");
+  
+      if (!ast) {
+        meta.html(
+          `<span style="color:#e67e22">
+            AST indisponible : le node Backtest n’est pas encore connecté.
+          </span>`
+        );
+        viewer.text("");
+        return;
+      }
+  
+      if (ast.meta.valid === false) {
+        meta.html(
+          `<span style="color:#e74c3c">
+            ❌ ${ast.meta.errors.join(", ")}
+          </span>`
+        );
+      } else {
+        meta.html(
+          `<span style="color:#2ecc71">
+            ✅ AST valide
+          </span>
+          <span style="color:#999; margin-left:8px">
+            (${ast.meta.nodes} nodes, ${ast.meta.links} links)
+          </span>`
+        );
+      }
+  
+      viewer.text(JSON.stringify(ast, null, 2));
+    }
+  
+    /* ============================================================
+     * EVENTS
+     * ============================================================ */
+    function refreshAstIfBacktestSelected() {
+      const sel = RED.view.selection().nodes;
+      if (!sel || sel.length !== 1) return;
+  
+      const node = sel[0];
+      if (!node || node.type !== "backtest") return;
+  
+      if (!canGenerateAst(node)) {
+        displayAst(null);
+        return;
+      }
+  
+      const ast = generateAst(node);
+      node.ast = ast;
+      displayAst(ast);
+    }
+  
+    RED.events.on("view:selection-changed", refreshAstIfBacktestSelected);
+    RED.events.on("links:add", refreshAstIfBacktestSelected);
+    RED.events.on("links:remove", refreshAstIfBacktestSelected);
+  
   })();
   </script>
   

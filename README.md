@@ -404,3 +404,175 @@ Elle vise à :
 La V1 décrit une stratégie.
 Elle ne l’exécute pas.
 
+
+-------------------------------------------------------------
+
+
+CONTRAT AST V1 – JSON
+
+    META
+
+    version (string) : "1.0"
+
+    rootBacktestId (string) : id du node backtest racine
+
+    nodes (object map) : clé = nodeId, valeur = NodeSpec
+
+    links (array) : liste de LinkSpec
+
+    errors (array, optionnel) : si présent et non vide, nodes/links peuvent être vides et l’AST est considéré “non exploitable”
+
+    NODE SPEC
+
+Un node dans l’AST est décrit par :
+
+    id (string) : id Node-RED
+
+    type (string) : "ticker" | "indicator" | "conditions" | "backtest"
+
+    name (string, optionnel)
+
+    params (object) : paramètres “propres” au node (V1 : libre, mais stable)
+
+    ports (object, optionnel) :
+
+        in (number | "N") : nombre d’entrées
+
+        out (number) : nombre de sorties
+
+        outLabels (array of string, optionnel) : labels des sorties (utile pour conditions)
+
+    LINK SPEC
+
+Un lien dans l’AST est décrit par :
+
+    sourceId (string)
+
+    sourcePort (number) : index du port source (0..)
+
+    targetId (string)
+
+    targetPort (number) : index du port target (0..)
+
+SCHEMA JSON (Draft 2020-12)
+
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://trading-saas.local/schemas/ast-v1.json",
+  "title": "Trading SaaS AST V1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "rootBacktestId", "nodes", "links"],
+  "properties": {
+    "version": { "type": "string", "const": "1.0" },
+    "rootBacktestId": { "type": "string", "minLength": 1 },
+
+    "nodes": {
+      "type": "object",
+      "additionalProperties": { "$ref": "#/$defs/NodeSpec" }
+    },
+
+    "links": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/LinkSpec" }
+    },
+
+    "errors": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  },
+
+  "$defs": {
+    "NodeType": {
+      "type": "string",
+      "enum": ["ticker", "indicator", "conditions", "backtest"]
+    },
+
+    "PortsSpec": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "in": { "oneOf": [{ "type": "integer", "minimum": 0 }, { "type": "string", "const": "N" }] },
+        "out": { "type": "integer", "minimum": 0 },
+        "outLabels": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+
+    "NodeSpec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "params"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "type": { "$ref": "#/$defs/NodeType" },
+        "name": { "type": "string" },
+        "params": { "type": "object" },
+        "ports": { "$ref": "#/$defs/PortsSpec" }
+      }
+    },
+
+    "LinkSpec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sourceId", "sourcePort", "targetId", "targetPort"],
+      "properties": {
+        "sourceId": { "type": "string", "minLength": 1 },
+        "sourcePort": { "type": "integer", "minimum": 0 },
+        "targetId": { "type": "string", "minLength": 1 },
+        "targetPort": { "type": "integer", "minimum": 0 }
+      }
+    }
+  }
+}
+
+CONTRAINTES “METIER” V1 (hors JSON Schema, à appliquer dans le code)
+
+Ces règles sont la validation minimale dont on a parlé :
+
+A) Sous-graphe pris en compte
+
+    l’AST ne contient que les nodes atteignables en remontant depuis rootBacktestId.
+
+B) Condition de validité minimale (bloquante)
+
+    il doit exister au moins un chemin : ticker -> ... -> backtest
+
+    équivalent simple : nodes contient au moins 1 node type === "ticker" (dans le sous-graphe)
+
+C) Cohérence de base
+
+    rootBacktestId doit exister dans nodes et être de type backtest
+
+    chaque LinkSpec doit référencer des sourceId/targetId présents dans nodes
+
+EXEMPLE MINIMAL VALIDE
+
+{
+  "version": "1.0",
+  "rootBacktestId": "bt1",
+  "nodes": {
+    "t1": { "id": "t1", "type": "ticker", "name": "EURUSD", "params": { "symbol": "EURUSD" }, "ports": { "in": 0, "out": 1 } },
+    "bt1": { "id": "bt1", "type": "backtest", "name": "BT", "params": {}, "ports": { "in": "N", "out": 0 } }
+  },
+  "links": [
+    { "sourceId": "t1", "sourcePort": 0, "targetId": "bt1", "targetPort": 0 }
+  ]
+}
+
+EXEMPLE INVALID (pas de ticker)
+
+{
+  "version": "1.0",
+  "rootBacktestId": "bt1",
+  "nodes": {
+    "bt1": { "id": "bt1", "type": "backtest", "params": {} }
+  },
+  "links": [],
+  "errors": ["Aucun ticker en source du backtest"]
+}
+
+

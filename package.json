@@ -8,9 +8,10 @@
   "node-red": {
     "nodes": {
       "policy-loader": "nodes/policy-loader/policy-loader.js",
+      "conditions-policy": "nodes/conditions-policy/conditions-policy.js",
       "ticker": "nodes/ticker/ticker.js",
       "indicator": "nodes/indicator/indicator.js",
-      "condition": "nodes/condition/condition.js",
+      "conditions": "nodes/conditions/conditions.js",
       "backtest": "nodes/backtest/backtest.js"
     }
   }

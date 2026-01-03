@@ -1,0 +1,156 @@
+<script type="text/javascript">
+  RED.nodes.registerType("conditions", {
+    category: "Trading SaaS",
+    color: "#E2D96E",
+  
+    defaults: {
+      name: { value: "" },
+      rules: { value: [] },
+      outputs: { value: 1 } // comme switch (persisté)
+    },
+  
+    inputs: 1,
+    outputs: function () {
+      return this.outputs || 1;
+    },
+  
+    outputLabels: function (index) {
+      const r = (this.rules || [])[index];
+      return r ? (r.label || "") : "";
+    },
+  
+    // ✅ whitelist + ✅ interdire plusieurs raccordements sur l'entrée
+    inputRules: {
+      0: {
+        max: 1,
+        filter: function (node) {
+          // types autorisés en entrée
+          return node.type === "ticker" || node.type === "indicator";
+        }
+      }
+    },
+
+    // ✅ whitelist en sortie (toutes les sorties)
+    outputRules: {
+      "*": {
+        filter: function (node) {
+          // types autorisés en sortie
+          return node.type === "backtest";
+        }
+      }
+    },
+  
+    icon: "font-awesome/fa-code-fork",
+    label: function () {
+      return this.name || "Conditions";
+    },
+  
+    oneditprepare: function () {
+      const node = this;
+      node.rules = Array.isArray(node.rules) ? node.rules : [];
+  
+      function updateOutputsFromList() {
+        node.outputs = node.rules.length || 1;
+        $("#node-input-outputs").val(node.outputs);
+      }
+  
+      $("#conditions-rules").editableList({
+        addButton: true,
+        removable: true,
+        sortable: true,
+  
+        addItem: function (container, index, data) {
+          const rule = data || { operator: "==", value: "", label: `rule ${index + 1}` };
+  
+          container.css({ display: "flex", gap: "6px", alignItems: "center" });
+  
+          const $op = $('<select style="width:80px"></select>')
+            .append('<option value="==">==</option>')
+            .append('<option value="!=">!=</option>')
+            .append('<option value="<"><</option>')
+            .append('<option value="<="><=</option>')
+            .append('<option value=">">></option>')
+            .append('<option value=">=">>=</option>')
+            .val(rule.operator || "==")
+            .appendTo(container);
+  
+          const $val = $('<input type="text" placeholder="value" style="width:120px">')
+            .val(rule.value ?? "")
+            .appendTo(container);
+  
+          const $label = $('<input type="text" placeholder="label" style="flex:1">')
+            .val(rule.label ?? "")
+            .appendTo(container);
+  
+          container.data("rule", rule);
+  
+          $op.on("change", function () { rule.operator = this.value; });
+          $val.on("input", function () { rule.value = this.value; });
+          $label.on("input", function () { rule.label = this.value; });
+  
+          updateOutputsFromList();
+        },
+  
+        removeItem: function () {
+          // on recalculera proprement au save, mais on maintient outputs cohérent
+          const len = $("#conditions-rules").editableList("length");
+          node.outputs = Math.max(1, len);
+          $("#node-input-outputs").val(node.outputs);
+        }
+      });
+  
+      // 🔁 Recharger l'état existant
+      node.rules.forEach(function (r) {
+        $("#conditions-rules").editableList("addItem", {
+          operator: r.operator,
+          value: r.value,
+          label: r.label
+        });
+      });
+  
+      updateOutputsFromList();
+    },
+  
+    oneditsave: function () {
+      const node = this;
+      const rules = [];
+  
+      const items = $("#conditions-rules").editableList("items");
+      items.each(function () {
+        const rule = $(this).data("rule") || {};
+        rules.push({
+          operator: rule.operator || "==",
+          value: rule.value ?? "",
+          label: rule.label ?? ""
+        });
+      });
+  
+      node.rules = rules;
+      node.outputs = node.rules.length || 1;
+      $("#node-input-outputs").val(node.outputs);
+    }
+  });
+  </script>
+  
+  <script type="text/html" data-template-name="conditions">
+    <div class="form-row">
+      <label for="node-input-name">Name</label>
+      <input type="text" id="node-input-name">
+    </div>
+  
+    <div class="form-row">
+      <label>Rules</label>
+      <ol id="conditions-rules"></ol>
+    </div>
+  
+    <!-- comme switch: outputs persisté -->
+    <input type="hidden" id="node-input-outputs">
+  </script>
+  
+  <script type="text/html" data-help-name="conditions">
+    <p><b>Conditions</b> définit des branches de manière <i>déclarative</i>.</p>
+    <p>Chaque règle ajoute une sortie (comme <b>switch</b>). Aucune condition n’est évaluée en V1.</p>
+    <p><b>Entrée</b> : 1 seul raccordement autorisé (ticker/indicator).</p>
+    <p><b>Sorties</b> : autorisées uniquement vers backtest.</p>
+  </script>
+  

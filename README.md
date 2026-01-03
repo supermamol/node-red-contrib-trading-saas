@@ -576,3 +576,243 @@ EXEMPLE INVALID (pas de ticker)
 }
 
 
+🧠 Architecture, AST et Plan d’Exécution
+
+Ce projet repose sur un principe fondamental :
+
+    Le moteur ne doit jamais deviner l’intention de l’utilisateur.
+    Tout comportement susceptible d’influencer le résultat doit être explicite dans le graphe.
+
+Cette section décrit :
+
+    la différence entre graphe Node‑RED, AST et plan d’exécution
+
+    la gestion du temps (timeframes)
+
+    la gestion des fusions de signaux
+
+    les règles de validation garantissant un moteur déterministe et explicable
+
+1. Graphe Node‑RED, AST et Plan d’Exécution
+1.1 Graphe Node‑RED
+
+Le graphe Node‑RED est :
+
+    visuel
+
+    descriptif
+
+    libre (branches, cycles, multi‑sources)
+
+    orienté conception
+
+Il exprime l’intention utilisateur, pas l’exécution.
+1.2 AST (Abstract Syntax Tree)
+
+Le graphe Node‑RED est transformé en un AST interne.
+
+L’AST est :
+
+    descriptif
+
+    structurel
+
+    indépendant de Node‑RED
+
+    sérialisable (JSON)
+
+    non exécutable
+
+    ⚠️ L’AST peut contenir des structures non exécutables (branches, cycles).
+
+1.3 Plan d’Exécution
+
+Le plan d’exécution est généré à partir de l’AST.
+
+Il est :
+
+    déterministe
+
+    ordonné
+
+    sans graphe
+
+    exécutable
+
+    indépendant de Node‑RED
+
+👉 L’AST décrit le “quoi”.
+👉 Le plan d’exécution décide du “comment”.
+2. Principe directeur : pas de comportements implicites
+
+    Si un comportement n’est pas visible dans le graphe,
+    alors le moteur n’a pas le droit de le faire.
+
+Conséquences :
+
+    pas de resampling implicite
+
+    pas d’alignement temporel automatique
+
+    pas de fusion silencieuse de signaux
+
+    pas de choix heuristiques dans le moteur
+
+Toute ambiguïté est une erreur de conception ou de compilation.
+3. Gestion du temps et des Timeframes
+3.1 Timeframes supportés
+
+Le moteur supporte un ensemble fini de timeframes discrets, par exemple :
+
+1m, 5m, 10m, 15m, 30m,
+1h, 2h, 4h,
+1d, 1w
+
+Toute donnée, indicateur ou transformation doit utiliser un timeframe supporté.
+3.2 Règle fondamentale
+
+    Un opérateur métier ne consomme que des flux ayant le même timeframe.
+
+Si plusieurs timeframes sont impliqués, ils doivent être explicitement alignés.
+4. Node Resample
+4.1 Rôle
+
+Le node Resample permet de changer le timeframe d’une série unique par agrégation.
+
+    1 input → 1 output
+
+    transformation rapide → lent uniquement
+
+    méthode standard (ex : OHLC)
+
+👉 Resample ne combine jamais plusieurs sources.
+4.2 Exemple
+
+Ticker (10m) → Resample (10m → 1h) → Indicator
+
+4.3 Règles
+
+    Resample est toujours explicite
+
+    aucun resampling implicite n’est autorisé
+
+    resampling lent → rapide est interdit
+
+    toute tentative d’alignement automatique est une erreur
+
+5. Fusion de signaux et node Combine
+5.1 Rôle
+
+Le node Combine permet de fusionner plusieurs signaux déjà alignés temporellement en un signal unique, selon une règle métier explicite.
+
+Il est :
+
+    optionnel
+
+    sémantique
+
+    explicite
+
+5.2 Combine implicite vs explicite
+Combine implicite
+
+Un node peut recevoir plusieurs entrées si sa logique interne définit clairement la fusion.
+
+Exemple :
+
+A ─┐
+   ├─ Indicator Cross
+B ─┘
+
+Combine explicite
+
+Un node Combine est requis lorsque la méthode de fusion est un choix métier.
+
+Exemple :
+
+Signal A ─┐
+          ├─ Combine (AND) ─ Conditions
+Signal B ─┘
+
+5.3 Méthodes supportées (V1)
+Méthode	Type	Description
+and	booléen	tous les signaux doivent être vrais
+or	booléen	au moins un signal vrai
+avg	numérique	moyenne arithmétique
+min	numérique	minimum
+max	numérique	maximum
+
+    Ces méthodes sont :
+
+        déterministes
+
+        sans paramètre caché
+
+        sans ambiguïté métier
+
+5.4 Contraintes
+
+    tous les inputs doivent avoir le même timeframe
+
+    Combine ne modifie jamais le timeframe
+
+    toute hétérogénéité temporelle doit être traitée avant, via Resample
+
+6. Node Conditions
+Rôle
+
+Le node Conditions :
+
+    accepte une seule entrée
+
+    évalue un signal unique
+
+    ne gère aucune logique multi‑sources
+
+👉 Toute logique combinatoire doit être faite en amont, via Combine.
+7. Gestion des cycles
+7.1 À la conception
+
+    les cycles structurels sont détectés
+
+    un avertissement est affiché
+
+    l’utilisateur est guidé
+
+7.2 À la compilation
+
+    toute boucle structurelle non qualifiée est interdite
+
+    le plan d’exécution est refusé
+
+    La boucle temporelle (bougie par bougie) est implicite et gérée par le moteur,
+    mais elle n’est jamais représentée comme un cycle dans le plan.
+
+8. Validation : double niveau
+Niveau	Objectif
+Conception	UX, pédagogie, feedback immédiat
+Compilation	Sécurité, robustesse, refus strict
+
+    Toute erreur métier doit être détectée le plus tôt possible,
+    mais refusée le plus tard possible.
+
+9. Résumé des règles clés
+
+    aucun comportement implicite surprenant
+
+    un problème = un node dédié
+
+    temps → Resample
+
+    fusion métier → Combine
+
+    logique → Conditions
+
+    ambiguïté → erreur
+
+🧠 Philosophie finale
+
+    Si on ne peut pas le lire dans le graphe,
+    alors le moteur n’a pas le droit de le faire.
+
+

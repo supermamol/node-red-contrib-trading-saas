@@ -252,3 +252,155 @@ La V1 doit être minimale, mais suffisamment expressive pour révéler tous les 
 
 Statut :
 Version AST V1 — Nature POC — Exécution hors périmètre
+
+
+ARCHITECTURE V1 — GRAPHE DÉCLARATIF, CARDINALITÉ ET CONNEXIONS
+
+La V1 repose sur un graphe déclaratif construit dans Node‑RED.
+Les nodes ne calculent rien : ils décrivent une stratégie sous forme de structure valide, destinée à être interprétée ultérieurement (V2).
+
+L’objectif principal de la V1 est de garantir la validité structurelle du graphe (types de connexions, cardinalité des entrées et sorties), directement au niveau de l’éditeur, avant toute exécution.
+
+GRAPHE GLOBAL AUTORISÉ (V1)
+
+La topologie V1 est strictement la suivante :
+
+Ticker
+  ↓
+Indicator → Indicator → …
+  ↓
+Conditions
+  ↓ (branches)
+Backtest
+
+Toute connexion sortant de ce schéma est interdite et supprimée immédiatement par des policies éditeur.
+
+CARDINALITÉ DES NODES (V1)
+
+NODE : Ticker
+Rôle : source absolue de données, point d’entrée unique du graphe.
+
+Entrées :
+
+    0 input
+
+    aucune connexion entrante autorisée
+
+Sorties :
+
+    1 output
+
+    fan‑out autorisé
+
+Exemple :
+Ticker → Indicator EMA
+       → Indicator RSI
+
+NODE : Indicator (EMA, RSI, etc.)
+Rôle : transformation déclarative appliquée à une source.
+
+Entrées :
+
+    1 input
+
+    plusieurs connexions entrantes tolérées en V1
+
+    aucune sémantique garantie en multi‑input
+
+    comportement transitoire (remplacé par un node Combine en V2)
+
+Sorties :
+
+    1 output
+
+Connexions autorisées :
+Indicator → Indicator
+Indicator → Conditions
+Indicator → Backtest
+
+NODE : Conditions
+Rôle : point de décision déclaratif définissant des branches logiques.
+
+Entrées :
+
+    1 input
+
+    UNE SEULE connexion entrante autorisée
+
+Toute tentative de connexion supplémentaire est :
+
+    immédiatement supprimée
+
+    signalée à l’utilisateur
+
+Cette contrainte est strictement imposée côté éditeur via une policy dédiée.
+
+Sorties :
+
+    N outputs dynamiques
+
+    N = nombre de règles définies
+
+    chaque output représente une branche logique indépendante
+
+    les sorties peuvent être connectées ou laissées vides (accepté en V1)
+
+NODE : Backtest
+Rôle : node terminal, consommateur du graphe.
+
+Entrées :
+
+    N inputs autorisés
+
+    plusieurs branches issues de Conditions peuvent converger vers un même Backtest
+
+Sorties :
+
+    0 output
+
+    toute sortie est interdite
+
+POLICIES ÉDITEUR (V1)
+
+La validité du graphe est garantie avant exécution, directement dans l’éditeur, via des nodes invisibles (non affichés dans la palette).
+
+POLICY GLOBALE : policy-loader
+
+Whitelist stricte des connexions autorisées entre types de nodes :
+
+ticker → indicator
+indicator → indicator | conditions | backtest
+conditions → backtest
+backtest → aucune sortie
+
+Toute connexion interdite est supprimée immédiatement avec notification explicite.
+
+POLICY SPÉCIFIQUE : Conditions
+
+Règle locale indépendante :
+
+Un node Conditions ne peut avoir qu’une seule source en entrée.
+
+Cette règle est :
+
+    implémentée via une policy dédiée
+
+    séparée volontairement de la policy globale
+
+    responsable uniquement de la cardinalité d’entrée
+
+PHILOSOPHIE DE LA V1
+
+La V1 est volontairement descriptive.
+
+Elle vise à :
+
+    être stricte là où la sémantique l’exige (Conditions)
+
+    être tolérante là où la V1 ne fait que décrire (Indicator)
+
+    garantir un graphe cohérent, exploitable et extensible
+
+La V1 décrit une stratégie.
+Elle ne l’exécute pas.
+

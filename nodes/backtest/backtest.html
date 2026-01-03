@@ -1,29 +1,50 @@
 <script type="text/javascript">
-  RED.nodes.registerType("backtest", {
-    category: "Trading SaaS",
-    color: "#D9A441",
-    defaults: {
-      name: { value: "" },
-      from: { value: "", required: true },
-      to: { value: "", required: true },
-      active: { value: true }
-    },
-    inputs: 1,
-    outputs: 0,
-    icon: "font-awesome/fa-flag-checkered",
+  (function () {
+    // état local éditeur (non persisté, comme Debug)
+    const BTN = {};
   
-    align: "right",   // ✅ clé pour un rendu “debug-like”
+    RED.nodes.registerType("backtest", {
+      category: "Trading SaaS",
+      color: "#D9A441",
+      defaults: { name: { value: "" } },
+      inputs: 1,
+      outputs: 0,
+      icon: "font-awesome/fa-flag-checkered",
+      align: "right",
   
-    button: {
-      enabled: function () { return true; },
-      onclick: function () {
-        this.active = !this.active;
-        RED.nodes.dirty(true);
-        RED.view.redraw();
-      }
-    },
+      button: {
+        toggle: true,
+        enabled: function () { return true; },
+        onclick: function () {
+          const id = this.id;
   
-    label: function () { return this.name || "Backtest"; }
-  });
+          // init si besoin
+          if (BTN[id] === undefined) BTN[id] = false;
+  
+          // toggle fiable
+          BTN[id] = !BTN[id];
+          const state = BTN[id];
+  
+          // force la synchro visuelle (important)
+          this._buttonState = state;
+          RED.view.redraw();
+  
+          console.log(state ? "[Backtest] activated (editor)" : "[Backtest] deactivated (editor)");
+  
+          // après deploy, si le runtime est là, on envoie un msg
+          try {
+            const rt = RED.nodes.node(id);
+            if (rt && typeof rt.send === "function") {
+              rt.send({ _control: "toggle", enabled: state });
+            }
+          } catch (e) {
+            // normal avant deploy
+          }
+        }
+      },
+  
+      label: function () { return this.name || "Backtest"; }
+    });
+  })();
   </script>
   

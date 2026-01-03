@@ -1,23 +1,21 @@
+"use strict";
+
 module.exports = function (RED) {
+
   function BacktestNode(config) {
     RED.nodes.createNode(this, config);
+    const node = this;
 
-    this.active = config.active !== false;
+    node.warn("[Backtest] runtime loaded");
 
-    this.on("input", function (msg, send, done) {
-
-      msg.backtest = {
-        from: config.from,
-        to: config.to,
-        name: config.name || null
-      };
-
-      if (this.active) {
-        this.log("Backtest AST:");
-        this.log(JSON.stringify(msg, null, 2));
+    node.on("input", function (msg) {
+      if (msg && msg._control === "toggle") {
+        if (msg.enabled) {
+          node.warn("[Backtest] activated");
+        } else {
+          node.warn("[Backtest] deactivated");
+        }
       }
-
-      if (done) done();
     });
   }
 

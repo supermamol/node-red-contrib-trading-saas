@@ -714,15 +714,22 @@ Il est :
     explicite
 
 5.2 Combine implicite vs explicite
-Combine implicite
 
-Un node peut recevoir plusieurs entrées si sa logique interne définit clairement la fusion.
+Combine node
 
-Exemple :
+Le node Combine fusionne deux signaux logiques A et B.
 
-A ─┐
-   ├─ Indicator Cross
-B ─┘
+Contrairement à d’autres nodes, Combine utilise un seul input physique.
+Les sources sont distinguées via msg.source.
+
+Cette approche est une exception volontaire à la policy “1 input = 1 source”,
+motivée par :
+
+    les limitations de l’éditeur Node‑RED
+
+    la volonté d’un comportement strict et simple
+
+La validation impose exactement 2 sources distinctes.
 
 Combine explicite
 

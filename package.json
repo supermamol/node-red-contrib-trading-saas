@@ -8,10 +8,11 @@
   "node-red": {
     "nodes": {
       "policy-loader": "nodes/policy-loader/policy-loader.js",
-      "conditions-policy": "nodes/conditions-policy/conditions-policy.js",
       "ticker": "nodes/ticker/ticker.js",
       "indicator": "nodes/indicator/indicator.js",
       "conditions": "nodes/conditions/conditions.js",
+      "resample": "nodes/resample/resample.js",
+      "combine": "nodes/combine/combine.js",
       "backtest": "nodes/backtest/backtest.js"
     }
   }

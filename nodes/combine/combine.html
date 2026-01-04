@@ -1,0 +1,97 @@
+<script type="text/javascript">
+  RED.nodes.registerType("combine", {
+    category: "Trading SaaS",
+    color: "#E2D96E",
+  
+    defaults: {
+      name:   { value: "" },
+      method: { value: "and", required: true }
+    },
+  
+    // Option A : 1 input physique (sources logiques A/B via msg.source)
+    inputs: 1,
+    outputs: 1,
+  
+    icon: "font-awesome/fa-code-fork",
+  
+    label: function () {
+      return this.name || `Combine (${this.method})`;
+    },
+  
+    oneditprepare: function () {
+      // rien pour l’instant
+    }
+  });
+  </script>
+  
+  <script type="text/html" data-template-name="combine">
+    <div class="form-row">
+      <label for="node-input-name">
+        <i class="fa fa-tag"></i> Name
+      </label>
+      <input type="text" id="node-input-name" placeholder="Combine">
+    </div>
+  
+    <div class="form-row">
+      <label for="node-input-method">
+        <i class="fa fa-sliders"></i> Method
+      </label>
+      <select id="node-input-method">
+        <option value="and">AND</option>
+        <option value="or">OR</option>
+        <option value="avg">AVG</option>
+        <option value="min">MIN</option>
+        <option value="max">MAX</option>
+      </select>
+    </div>
+  
+    <hr/>
+  
+    <div class="form-tips">
+      <b>Combine (Option A)</b><br/>
+      Combine fusionne <b>deux sources logiques</b> <code>A</code> et <code>B</code> en une sortie,
+      avec <b>un seul input physique</b> (limitation/instabilité Node-RED sur multi-input fixes).
+      <br/><br/>
+  
+      <b>Convention d’entrée (obligatoire)</b><br/>
+      Chaque message entrant doit contenir :
+      <ul style="margin:6px 0 6px 18px;">
+        <li><code>msg.source</code> ∈ <code>"A"</code> | <code>"B"</code></li>
+        <li><code>msg.payload</code> = valeur à combiner</li>
+      </ul>
+  
+      <b>Comportement</b><br/>
+      Le node mémorise la dernière valeur de <code>A</code> et de <code>B</code> et n’émet que
+      lorsque <b>A et B sont définis</b>.
+      <br/><br/>
+  
+      <b>Sortie</b><br/>
+      <code>msg.payload</code> devient :
+      <pre style="margin:6px 0; padding:6px; background:#f7f7f7; border:1px solid #ddd;">
+  {
+    "type": "combined",
+    "method": "and|or|avg|min|max",
+    "A": &lt;valA&gt;,
+    "B": &lt;valB&gt;,
+    "value": &lt;result&gt;
+  }
+      </pre>
+  
+      <b>Exemple (Function nodes en amont)</b><br/>
+      Pour tagger les branches :
+      <pre style="margin:6px 0; padding:6px; background:#f7f7f7; border:1px solid #ddd;">
+  // Branche A
+  msg.source = "A";
+  return msg;
+  
+  // Branche B
+  msg.source = "B";
+  return msg;
+      </pre>
+  
+      <b>Validation (éditeur)</b><br/>
+      La policy/validation doit imposer : <b>exactement 2 branches entrantes</b> vers Combine,
+      et des sources distinctes (<code>A</code> et <code>B</code>).
+    </div>
+  </script>
+  

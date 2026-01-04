@@ -2,47 +2,294 @@
   (function () {
     "use strict";
   
-    if (window.__TRADING_POLICY_GLOBAL__) return;
-    window.__TRADING_POLICY_GLOBAL__ = true;
+    // Charger une seule fois (même si plusieurs nodes contrib existent)
+    if (window.__TRADING_VALIDATOR__) return;
+    window.__TRADING_VALIDATOR__ = true;
   
-    console.log("[TradingPolicy] GLOBAL policy loaded");
+    console.log("[TradingValidator] editor validator loaded");
+
+    // TRACE: qui enregistre "combine", combien de fois, et avec quels inputs/outputs
+    (function traceRegisterTypeOnce(){
+      if (window.__TRACE_REGISTER_TYPE__) return;
+      window.__TRACE_REGISTER_TYPE__ = true;
+
+      const orig = RED.nodes.registerType;
+      RED.nodes.registerType = function(type, def) {
+        if (type === "combine") {
+          console.log(
+            "[TRACE registerType] combine",
+            "inputs=", def && def.inputs,
+            "outputs=", def && def.outputs,
+            "def=", def
+          );
+          console.log(new Error("[TRACE stack]").stack);
+        }
+        return orig.apply(this, arguments);
+      };    
+    })();
+
   
+    /* =========================
+     *  CONFIG
+     * ========================= */
+  
+    // Connexions autorisées (filtrage "grossier" UX)
     const ALLOWED = {
-      ticker: ["indicator"],
-      indicator: ["indicator", "conditions", "backtest"],
+      ticker:     ["indicator", "resample", "combine"],
+      indicator:  ["indicator", "combine", "conditions", "backtest"],
+      resample:   ["indicator", "combine", "conditions", "backtest"],
+      combine:    ["indicator", "conditions", "backtest"],
       conditions: ["backtest"],
-      backtest: []
+      backtest:   []
     };
   
-    function validateAllLinks(origin) {
-      RED.nodes.eachLink(function (link) {
-        const src = RED.nodes.node(link.source.id);
-        const tgt = RED.nodes.node(link.target.id);
+    // Cardinalité exacte des inputs
+    const EXACT_ONE_INPUT = new Set(["resample", "conditions", "indicator", "backtest"]);
+    const EXACT_TWO_INPUTS = new Set(["combine"]);
   
-        if (!src || !tgt) return;
+    /* =========================
+     *  UTIL
+     * ========================= */
   
-        const allowedTargets = ALLOWED[src.type] || [];
-  
-        if (!allowedTargets.includes(tgt.type)) {
-          console.warn(
-            `[TradingPolicy] forbidden ${src.type} -> ${tgt.type}`
-          );
-  
-          RED.nodes.removeLink(link);
-  
-          RED.notify(
-            `Connexion interdite : ${src.type} → ${tgt.type}`,
-            "error"
-          );
-        }
-      });
+    function notify(type, message) {
+      // type: "error" | "warning" | "success"
+      RED.notify(message, { type, timeout: 5000 });
     }
   
-    RED.events.on("links:add", () => validateAllLinks("links"));
-    RED.events.on("nodes:add", () => validateAllLinks("nodes"));
-    RED.events.on("workspace:change", () => validateAllLinks("workspace"));
+    function getNodeById(id) {
+      try { return RED.nodes.node(id); } catch { return null; }
+    }
   
-    setTimeout(() => validateAllLinks("initial"), 0);
+    function getInputLinks(node) {
+      const links = [];
+      RED.nodes.eachLink(function (l) {
+        if (l.target && l.target.id === node.id) links.push(l);
+      });
+      return links;
+    }
+  
+    function checkPortUniqueness(links) {
+      const ports = {};
+      for (const l of links) {
+        const p = l.targetPort ?? 0;
+        ports[p] = (ports[p] || 0) + 1;
+        if (ports[p] > 1) return false;
+      }
+      return true;
+    }
+  
+    /* =========================
+     *  VALIDATION (LINK)
+     * ========================= */
+  
+    function validateLink(src, tgt) {
+      if (!src || !tgt) return null;
+  
+      const allowedTargets = ALLOWED[src.type] || [];
+      if (!allowedTargets.includes(tgt.type)) {
+        return `Connexion interdite : ${src.type} → ${tgt.type}`;
+      }
+      return null;
+    }
+  
+    /* =========================
+     *  VALIDATION (NODE)
+     * ========================= */
+  
+
+      function validateNode(node) {
+        if (!node) return null;
+
+        const links = getInputLinks(node);
+        const type = node.type;
+
+        /* ============================
+        * RÈGLES GÉNÉRALES
+        * ============================ */
+
+        const EXACT_ONE_INPUT = [
+          "resample",
+          "conditions",
+          "indicator",
+          "backtest"
+        ];
+
+        if (EXACT_ONE_INPUT.includes(type) && links.length !== 1) {
+          return `Le node '${type}' doit avoir exactement 1 branche entrante`;
+        }
+
+        /* ============================
+        * EXCEPTION : COMBINE
+        * ============================ */
+
+        if (type === "combine") {
+          // 0 ou 1 lien : état intermédiaire autorisé
+          if (links.length < 2) {
+            return null;
+          }
+
+          // Plus de 2 branches : interdit
+          if (links.length > 2) {
+            return "Combine accepte exactement 2 branches (A et B)";
+          }
+
+          // Exactement 2 branches → vérifier les sources
+          const sources = links.map(l => l.source.id);
+          const uniqueSources = new Set(sources);
+
+          if (uniqueSources.size !== 2) {
+            return "Combine requiert 2 sources distinctes (A et B)";
+          }
+
+          return null;
+        }
+
+        /* ============================
+        * RÈGLES COMMUNES
+        * ============================ */
+
+        // Unicité de connexion par port (si applicable ailleurs)
+        if (!checkPortUniqueness(links)) {
+          return `Multi‑connexion interdite sur un input du node '${type}'`;
+        }
+
+        return null;
+      }
+     
+
+
+  
+    // Exposer pour debug console
+    window.validateNode = validateNode;
+  
+    /* =========================
+     *  CYCLE DETECTION (GLOBAL)
+     * ========================= */
+  
+    function detectCycle() {
+      const visited = new Set();
+      const stack = new Set();
+      let hasCycle = false;
+  
+      function visit(node) {
+        if (!node || hasCycle) return;
+  
+        if (stack.has(node.id)) { hasCycle = true; return; }
+        if (visited.has(node.id)) return;
+  
+        visited.add(node.id);
+        stack.add(node.id);
+  
+        RED.nodes.eachLink(function (l) {
+          if (l.source && l.source.id === node.id) visit(l.target);
+        });
+  
+        stack.delete(node.id);
+      }
+  
+      RED.nodes.eachNode(function (n) {
+        if (!visited.has(n.id)) visit(n);
+      });
+  
+      return hasCycle;
+    }
+  
+    /* =========================
+     *  APPLY / REPAIR (OPTIONNEL)
+     * ========================= */
+  
+    // Politique: on évite de "removeLink" en masse (ça rend l'UX bizarre).
+    // On peut choisir:
+    //  - soit "warn only"
+    //  - soit "remove only the last link added" (comportement prévisible)
+    //
+    // Ici: on retire UNIQUEMENT le lien qui vient d'être ajouté s'il est interdit.
+    function removeJustAddedLink(link) {
+      try {
+        RED.nodes.removeLink(link);
+      } catch (e) {
+        console.warn("[TradingValidator] removeLink failed", e);
+      }
+    }
+  
+    /* =========================
+     *  HOOKS
+     * ========================= */
+  
+    RED.events.on("links:add", function (link) {
+      // 1) validation lien (source->target)
+      const src = getNodeById(link.source.id);
+      const tgt = getNodeById(link.target.id);
+  
+      const linkError = validateLink(src, tgt);
+      if (linkError) {
+        console.warn("[TradingValidator]", linkError);
+        removeJustAddedLink(link);
+        notify("error", linkError);
+        return;
+      }
+  
+      // 2) validation locale node cible (cardinalité, ports)
+      const nodeError = validateNode(tgt);
+      if (nodeError) {
+        console.warn("[TradingValidator]", nodeError);
+        removeJustAddedLink(link);
+        notify("error", nodeError);
+        return;
+      }
+  
+      // 3) validation globale cycles
+      if (detectCycle()) {
+        const msg = "Cycle détecté : les boucles structurelles sont interdites";
+        console.warn("[TradingValidator]", msg);
+        removeJustAddedLink(link);
+        notify("error", msg);
+        return;
+      }
+    });
+  
+    RED.events.on("links:remove", function (link) {
+      // Revalider uniquement le node cible impacté (si présent)
+      const tgt = link?.target ? getNodeById(link.target.id) : null;
+      if (!tgt) return;
+  
+      const nodeError = validateNode(tgt);
+      if (nodeError) notify("error", nodeError);
+    });
+  
+    // (Optionnel) au chargement, on ne supprime rien: on ne fait que signaler.
+    // Ça évite l'effet "tout se déconnecte tout seul" quand on ouvre un flow.
+    RED.events.on("workspace:change", function () {
+      // signaler uniquement, pas de mutation
+      // (si tu veux, on peut ajouter un scan + warnings ici)
+    });
+  
   })();
+  </script>
+  
+  <!-- Node "policy-loader" (technique). Aucun UI, juste pour charger le script ci-dessus -->
+  <script type="text/javascript">
+    RED.nodes.registerType("policy-loader", {
+      category: "config",     // ⚠️ catégorie spéciale
+      paletteLabel: false,    // ❌ pas de label dans la palette
+      color: "#eeeeee",
+
+      defaults: {},
+
+      inputs: 0,
+      outputs: 0,
+
+      icon: "font-awesome/fa-shield",
+
+      label: function () {
+        return "policy-loader";
+      }
+    });
+  </script>
+  
+  <script type="text/html" data-template-name="policy-loader">
+    <div class="form-row">
+      <p><b>Node technique</b> : charge la validation éditeur. Ne pas utiliser dans un flow.</p>
+    </div>
   </script>
   

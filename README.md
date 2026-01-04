@@ -390,3 +390,131 @@ Principe directeur
 
     L’utilisateur peut raisonner localement sur un Backtest via une vue AST dédiée,
     mais le moteur ne raisonne et n’exécute qu’à partir d’un AST global unique.
+
+
+    ✅ Décision actée
+
+👉 Le panel s’appelle “Strategies & Runs”
+👉 Il expose la liste des backtests actifs d’une stratégie (AST)
+👉 Ces backtests sont cliquables pour piloter leur affichage dans le panel TV Charts
+1️⃣ Ce que représente “backtests actifs” (clarification nette)
+
+Dans ce modèle :
+
+    les backtests actifs sont :
+
+        ceux capturés dans l’AST
+
+        donc figés au moment de la génération de l’AST
+
+    ils représentent :
+
+        les terminaux observables du plan d’exécution
+
+        pas des options dynamiques d’exécution
+
+👉 Le panel ne modifie pas l’AST,
+👉 il pilote uniquement l’observation.
+
+C’est une distinction clé.
+2️⃣ Rôle exact du panel Strategies & Runs
+Pour une stratégie sélectionnée (AST)
+
+Le panel affiche par exemple :
+
+Strategy: ARTG – Breakout RSI
+--------------------------------
+☑ Backtest A (RSI > 70)
+☑ Backtest B (RSI < 30)
+☐ Backtest C (Trend filter)
+
+    cette liste vient exclusivement de l’AST
+
+    aucun calcul implicite
+
+    aucune dépendance à Node‑RED
+
+3️⃣ Interaction attendue (très importante)
+Clic sur un backtest dans le panel
+
+👉 Effet unique :
+
+    affichage / dés‑affichage de la série correspondante
+
+    dans le panel TV Charts
+
+    sans relancer le RUN
+
+    sans toucher au moteur
+
+C’est donc :
+
+    un toggle d’observation
+
+    pas un toggle d’exécution
+
+4️⃣ Implication côté Chart (lightweight‑charts / TV Charts)
+
+Chaque backtest correspond à :
+
+    une série dédiée
+
+    avec :
+
+        une couleur stable (issue du node backtest)
+
+        un backtestId
+
+Comportement attendu
+
+    toggle ON :
+
+        la série est visible
+
+    toggle OFF :
+
+        la série est masquée (pas détruite)
+
+👉 Les données continuent éventuellement d’arriver,
+👉 mais la vue décide quoi montrer.
+5️⃣ Implication côté API (simple et propre)
+L’API n’a RIEN de spécial à faire
+
+    ❌ pas de endpoint “activate / deactivate backtest”
+
+    ❌ pas de mutation d’AST
+
+    ❌ pas de re‑génération de plan
+
+Le panel :
+
+    connaît les backtests actifs via :
+
+GET /api/asts/{astId}
+
+connaît les résultats via :
+
+    WS /runs/{runId}
+
+👉 Tout le pilotage est frontend.
+6️⃣ Où vit l’état “affiché / masqué” ?
+
+👉 Uniquement côté UI
+
+Par exemple :
+
+visibleBacktests = {
+  btA: true,
+  btB: true,
+  btC: false
+}
+
+    état éphémère
+
+    non persisté
+
+    spécifique à la session / utilisateur
+
+C’est exactement ce qu’on veut.
+
+

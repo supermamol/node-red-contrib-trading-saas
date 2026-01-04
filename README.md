@@ -1,11 +1,17 @@
-AST V1 — Spécification Officielle
+AST V1 — Spécification officielle
 Langage déclaratif de stratégies de trading (POC)
 1. Objectif
 
-Ce document définit la spécification officielle de l’AST V1 (Abstract Syntax Tree) utilisé pour décrire des stratégies de trading sous forme déclarative, non linéaire et orientée graphe.
+Ce document définit la spécification officielle de l’AST V1 (Abstract Syntax Tree) utilisé pour décrire des stratégies de trading sous une forme :
 
-La V1 est conçue comme un POC structurant :
-minimale, mais suffisamment expressive pour révéler les vrais problèmes du trading réel.
+    déclarative
+
+    non linéaire
+
+    orientée graphe
+
+L’AST V1 constitue un POC structurant :
+il est volontairement minimal, mais suffisamment expressif pour exposer les véritables contraintes des stratégies de trading réelles.
 
     Principe clé
     La V1 décrit une stratégie. La V2 l’exécutera.
@@ -15,17 +21,23 @@ minimale, mais suffisamment expressive pour révéler les vrais problèmes du tr
 
 L’AST V1 vise à :
 
-    représenter fidèlement des stratégies réelles
+    représenter fidèlement des stratégies de trading réelles
 
     casser les hypothèses implicites de linéarité (pipeline)
 
-    permettre des graphes complexes (branches, convergences, multi‑sources)
+    autoriser des graphes complexes :
+
+        branches
+
+        convergences
+
+        multi‑sources
 
     rester strictement déclaratif
 
 2.2 Hors périmètre explicite
 
-La V1 ne vise pas :
+L’AST V1 ne couvre pas :
 
     l’exécution
 
@@ -35,7 +47,9 @@ La V1 ne vise pas :
 
     la résolution des dépendances
 
-    l’optimisation ou le scheduling
+    l’optimisation
+
+    le scheduling
 
 3. Principe fondamental
 
@@ -43,13 +57,18 @@ Le graphe construit dans l’éditeur EST l’AST.
 
 Il n’existe :
 
-    ni compilation intermédiaire
+    aucune compilation intermédiaire implicite
 
-    ni transformation cachée
+    aucune transformation cachée
 
-    ni logique implicite
+    aucune logique dérivée ou magique
 
-Le node Backtest agit uniquement comme observateur et sérialiseur.
+Le node Backtest agit uniquement comme :
+
+    observateur
+
+    point de sérialisation
+
 Il ne modifie jamais la structure de l’AST.
 4. Déclaratif strict
 
@@ -87,7 +106,8 @@ Ce n’est :
 6. Non‑linéarité assumée
 
 La non‑linéarité est intrinsèque aux stratégies de trading réelles.
-Cas supportés nativement
+
+Cas supportés nativement :
 
     bifurcations conditionnelles
 
@@ -139,7 +159,7 @@ Chaque node est identifié par un node_id :
 
     sans sémantique fonctionnelle
 
-Il sert uniquement à exprimer la structure.
+Il sert uniquement à exprimer la structure du graphe.
 7.3 Structure générale d’un node
 
 Un node contient :
@@ -148,11 +168,11 @@ Un node contient :
 
     type (obligatoire)
 
-    params (obligatoire, mais libre en V1)
+    params (obligatoire, libre en V1)
 
     ports (optionnel)
 
-7.4 Sémantique de inputs
+7.4 Sémantique des inputs
 
 Le champ inputs décrit des dépendances logiques.
 
@@ -222,10 +242,11 @@ Les cycles sont autorisés à titre déclaratif uniquement.
 
     2 sources logiques (A / B via msg.source)
 
-    méthode métier explicite (and, or, avg, min, max)
+    méthode métier explicite :
 
-    Exception volontaire à la policy générale,
-    motivée par les limitations de l’éditeur Node‑RED.
+        and, or, avg, min, max
+
+    Exception volontaire à la policy générale, motivée par les limitations de l’éditeur Node‑RED.
 
 8.5 Backtest
 
@@ -237,14 +258,16 @@ Les cycles sont autorisés à titre déclaratif uniquement.
 
 9. Validation et policies (V1)
 
-La validité du graphe est garantie avant exécution, directement dans l’éditeur.
+La validité du graphe est garantie avant toute exécution, directement dans l’éditeur.
 9.1 Policy globale
 
 Whitelist stricte des connexions autorisées :
 
-ticker → indicator
-indicator → indicator | conditions | backtest
-conditions → backtest
+    ticker → indicator
+
+    indicator → indicator | conditions | backtest
+
+    conditions → backtest
 
 Toute connexion interdite est supprimée immédiatement.
 9.2 Policy locale — Conditions
@@ -261,9 +284,9 @@ Toute connexion interdite est supprimée immédiatement.
 
     sources distinctes
 
-    validation structurelle éditeur
+    validation structurelle dans l’éditeur
 
-    validation sémantique runtime
+    validation sémantique au runtime
 
 10. Frontière V1 / V2
 V1	V2
@@ -272,249 +295,97 @@ Graphe	DAG / pipeline
 Structure	Scheduling
 AST	Plan d’exécution
 
-    L’AST décrit le “quoi”.
-    Le plan d’exécution décide du “comment”.
+    L’AST décrit le quoi.
+    Le plan d’exécution décide du comment.
 
-11. Principe directeur final
+11. Principe directeur
 
-    Si on ne peut pas le lire dans le graphe,
-    alors le moteur n’a pas le droit de le faire.
+    Si on ne peut pas le lire dans le graphe, alors le moteur n’a pas le droit de le faire.
 
-Statut
-
-AST V1 — POC structurant
-Exécution hors périmètre
-
-AST global, vues AST par Backtest et génération du plan d’exécution
+12. AST global et vues dérivées
+12.1 AST global — source de vérité
 
 La stratégie est définie par un AST global unique, qui constitue la source de vérité structurelle du système.
 
 Cet AST global :
 
-    décrit l’intégralité de la stratégie,
+    décrit l’intégralité de la stratégie
 
-    inclut tous les nodes, toutes les branches et tous les nodes Backtest,
+    inclut tous les nodes, toutes les branches et tous les Backtests
 
-    est indépendant de toute vue utilisateur ou sélection contextuelle,
+    est indépendant de toute vue utilisateur ou sélection contextuelle
 
-    est le seul artefact utilisé pour la validation, la compilation et l’exécution.
+    est le seul artefact utilisé pour :
 
-Il n’existe qu’un seul AST réel par stratégie.
-Vues AST contextuelles par Backtest
+        la validation
 
-Afin de faciliter la compréhension et l’analyse individuelle des stratégies, l’interface permet d’afficher, pour chaque node Backtest, une vue AST restreinte à son propre chemin logique.
+        la compilation
 
-Lorsqu’un Backtest est sélectionné :
+        l’exécution
 
-    l’onglet AST affiche un arbre partiel correspondant uniquement aux nodes et dépendances menant à ce Backtest,
+    Il n’existe qu’un seul AST réel par stratégie.
 
-    cette vue permet une lecture locale, pédagogique et focalisée,
+12.2 Vues AST par Backtest
 
-    elle aide à raisonner sur un Backtest pris isolément.
+Afin de faciliter la compréhension et l’analyse locale :
 
-Ces arbres AST “par Backtest” sont :
+    l’interface permet d’afficher, pour chaque Backtest, une vue AST restreinte
 
-    des vues dérivées,
+    cette vue correspond uniquement aux nodes et dépendances menant à ce Backtest
 
-    calculées à partir de l’AST global,
+Ces vues :
 
-    strictement en lecture seule.
+    sont calculées à partir de l’AST global
 
-⚠️ Ils n’ont aucune existence opérationnelle :
+    sont strictement en lecture seule
 
-    ils ne sont jamais sérialisés comme AST exécutables,
+    n’ont aucune existence opérationnelle
 
-    ils ne sont jamais utilisés pour générer un plan d’exécution,
+⚠️ Elles ne sont jamais :
 
-    ils ne participent ni à la compilation, ni au runtime.
+    sérialisées comme AST exécutables
 
-AST global comme étape intermédiaire incontournable
+    utilisées pour générer un plan d’exécution
 
-La génération et la validation de l’AST global constituent une étape intermédiaire obligatoire entre l’édition de la stratégie et toute exécution.
+    impliquées dans la compilation ou le runtime
 
-Le pipeline conceptuel est strictement le suivant :
+13. AST global comme étape intermédiaire obligatoire
 
-    AST global
+La génération et la validation de l’AST global constituent une étape intermédiaire incontournable entre l’édition et l’exécution.
 
-        unique
+Pipeline conceptuel strict :
 
-        complet
+    AST global unique et complet
 
-        indépendant des vues UI
+    Validation structurelle et règles métier
 
-    Validation structurelle
+    Compilation déterministe
 
-        cohérence du graphe
+    Plan d’exécution unique et exécutable
 
-        règles métier
-
-    Compilation
-
-        transformation déterministe de l’AST global
-
-    Plan d’exécution unique
-
-        exécutable
-
-        synchronisé
-
-        indépendant de l’interface
-
-    RUN
-
-        exécution du plan
-
-        streaming des résultats
+    RUN (exécution + streaming)
 
 Aucun plan d’exécution ne peut être généré :
 
-    à partir d’un AST partiel,
+    à partir d’un AST partiel
 
-    à partir d’une vue par Backtest,
+    à partir d’une vue par Backtest
 
-    ou à partir d’un sous‑graphe dépendant de l’état de l’UI.
+    à partir d’un sous‑graphe dépendant de l’état de l’UI
 
-Séparation stricte entre vue et exécution
-
-Cette architecture repose sur une séparation claire des responsabilités :
+14. Séparation stricte vue / exécution
 Élément	Rôle
-AST global	Source de vérité de la stratégie
-AST View (par Backtest)	Aide à la lecture et à la compréhension
-Plan d’exécution	Artefact exécutable unique
-RUN	Déclenchement de l’exécution
-WebSocket	Canal d’observation des résultats
+AST global	Source de vérité
+AST View (Backtest)	Lecture et compréhension
+Plan d’exécution	Artefact exécutable
+RUN	Déclenchement
+WebSocket	Observation
 
-Les vues AST améliorent la lisibilité humaine,
-mais l’exécution reste exclusivement fondée sur l’AST global.
-Principe directeur
+    Les vues améliorent la lisibilité humaine.
+    L’exécution repose exclusivement sur l’AST global.
 
-    L’utilisateur peut raisonner localement sur un Backtest via une vue AST dédiée,
+15. Principe directeur final
+
+    L’utilisateur peut raisonner localement via des vues,
     mais le moteur ne raisonne et n’exécute qu’à partir d’un AST global unique.
-
-
-    ✅ Décision actée
-
-👉 Le panel s’appelle “Strategies & Runs”
-👉 Il expose la liste des backtests actifs d’une stratégie (AST)
-👉 Ces backtests sont cliquables pour piloter leur affichage dans le panel TV Charts
-1️⃣ Ce que représente “backtests actifs” (clarification nette)
-
-Dans ce modèle :
-
-    les backtests actifs sont :
-
-        ceux capturés dans l’AST
-
-        donc figés au moment de la génération de l’AST
-
-    ils représentent :
-
-        les terminaux observables du plan d’exécution
-
-        pas des options dynamiques d’exécution
-
-👉 Le panel ne modifie pas l’AST,
-👉 il pilote uniquement l’observation.
-
-C’est une distinction clé.
-2️⃣ Rôle exact du panel Strategies & Runs
-Pour une stratégie sélectionnée (AST)
-
-Le panel affiche par exemple :
-
-Strategy: ARTG – Breakout RSI
---------------------------------
-☑ Backtest A (RSI > 70)
-☑ Backtest B (RSI < 30)
-☐ Backtest C (Trend filter)
-
-    cette liste vient exclusivement de l’AST
-
-    aucun calcul implicite
-
-    aucune dépendance à Node‑RED
-
-3️⃣ Interaction attendue (très importante)
-Clic sur un backtest dans le panel
-
-👉 Effet unique :
-
-    affichage / dés‑affichage de la série correspondante
-
-    dans le panel TV Charts
-
-    sans relancer le RUN
-
-    sans toucher au moteur
-
-C’est donc :
-
-    un toggle d’observation
-
-    pas un toggle d’exécution
-
-4️⃣ Implication côté Chart (lightweight‑charts / TV Charts)
-
-Chaque backtest correspond à :
-
-    une série dédiée
-
-    avec :
-
-        une couleur stable (issue du node backtest)
-
-        un backtestId
-
-Comportement attendu
-
-    toggle ON :
-
-        la série est visible
-
-    toggle OFF :
-
-        la série est masquée (pas détruite)
-
-👉 Les données continuent éventuellement d’arriver,
-👉 mais la vue décide quoi montrer.
-5️⃣ Implication côté API (simple et propre)
-L’API n’a RIEN de spécial à faire
-
-    ❌ pas de endpoint “activate / deactivate backtest”
-
-    ❌ pas de mutation d’AST
-
-    ❌ pas de re‑génération de plan
-
-Le panel :
-
-    connaît les backtests actifs via :
-
-GET /api/asts/{astId}
-
-connaît les résultats via :
-
-    WS /runs/{runId}
-
-👉 Tout le pilotage est frontend.
-6️⃣ Où vit l’état “affiché / masqué” ?
-
-👉 Uniquement côté UI
-
-Par exemple :
-
-visibleBacktests = {
-  btA: true,
-  btB: true,
-  btC: false
-}
-
-    état éphémère
-
-    non persisté
-
-    spécifique à la session / utilisateur
-
-C’est exactement ce qu’on veut.
-
 

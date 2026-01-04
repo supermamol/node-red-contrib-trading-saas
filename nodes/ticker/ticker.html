@@ -1,39 +1,70 @@
 <script type="text/javascript">
-    RED.nodes.registerType("ticker", {
-      category: "Trading SaaS",
-      color: "#7BB3A0",
-      defaults: {
-        name: { value: "" },
-        symbol: { value: "", required: true },
-        timeframe: { value: "1D", required: true }
-      },
-      inputs: 0,
-      outputs: 1,
-      icon: "font-awesome/fa-line-chart",
-      label: function () {
-        return this.name || (this.symbol + " " + this.timeframe);
+  RED.nodes.registerType("ticker", {
+    category: "Trading SaaS",
+    color: "#9ED0FF",
+    defaults: {
+      name: { value: "" },
+      symbol: { value: "", required: true },
+      timeframe: { value: "", required: true }
+    },
+    inputs: 0,
+    outputs: 1,
+    icon: "font-awesome/fa-line-chart",
+    label: function () {
+      if (this.name) return this.name;
+      if (this.symbol && this.timeframe) {
+        return `${this.symbol} (${this.timeframe})`;
       }
-    });
-    </script>
-    
-    <script type="text/html" data-template-name="ticker">
-      <div class="form-row">
-        <label for="node-input-name">Name</label>
-        <input type="text" id="node-input-name" placeholder="optional">
-      </div>
-    
-      <div class="form-row">
-        <label for="node-input-symbol">Symbol</label>
-        <input type="text" id="node-input-symbol" placeholder="AAPL">
-      </div>
-    
-      <div class="form-row">
-        <label for="node-input-timeframe">Timeframe</label>
-        <select id="node-input-timeframe">
-          <option value="1D">1D</option>
-          <option value="1H">1H</option>
-          <option value="15m">15m</option>
-        </select>
-      </div>
-    </script>
-    
+      return "Ticker";
+    },
+    outputLabels: function () {
+      return "out";
+    }
+  });
+  </script>
+  
+  <script type="text/html" data-template-name="ticker">
+    <div class="form-row">
+      <label for="node-input-name">
+        <i class="fa fa-tag"></i> Name
+      </label>
+      <input type="text" id="node-input-name" placeholder="Ticker">
+    </div>
+  
+    <div class="form-row">
+      <label for="node-input-symbol">
+        <i class="fa fa-globe"></i> Symbol
+      </label>
+      <input type="text" id="node-input-symbol" placeholder="EURUSD">
+    </div>
+  
+    <div class="form-row">
+      <label for="node-input-timeframe">
+        <i class="fa fa-clock-o"></i> Timeframe
+      </label>
+      <select id="node-input-timeframe">
+        <option value="">-- select --</option>
+        <option value="1m">1m</option>
+        <option value="5m">5m</option>
+        <option value="10m">10m</option>
+        <option value="15m">15m</option>
+        <option value="30m">30m</option>
+        <option value="1h">1h</option>
+        <option value="2h">2h</option>
+        <option value="4h">4h</option>
+        <option value="1d">1d</option>
+        <option value="1w">1w</option>
+      </select>
+    </div>
+  
+    <div class="form-tips">
+      <b>Ticker</b> est la source de marché.
+      <ul>
+        <li>Définit le symbole</li>
+        <li>Définit le timeframe du flux</li>
+        <li>Injecte <code>msg.timeframe</code></li>
+        <li>Aucune entrée</li>
+      </ul>
+    </div>
+  </script>
+  

@@ -284,3 +284,109 @@ Statut
 
 AST V1 — POC structurant
 Exécution hors périmètre
+
+AST global, vues AST par Backtest et génération du plan d’exécution
+
+La stratégie est définie par un AST global unique, qui constitue la source de vérité structurelle du système.
+
+Cet AST global :
+
+    décrit l’intégralité de la stratégie,
+
+    inclut tous les nodes, toutes les branches et tous les nodes Backtest,
+
+    est indépendant de toute vue utilisateur ou sélection contextuelle,
+
+    est le seul artefact utilisé pour la validation, la compilation et l’exécution.
+
+Il n’existe qu’un seul AST réel par stratégie.
+Vues AST contextuelles par Backtest
+
+Afin de faciliter la compréhension et l’analyse individuelle des stratégies, l’interface permet d’afficher, pour chaque node Backtest, une vue AST restreinte à son propre chemin logique.
+
+Lorsqu’un Backtest est sélectionné :
+
+    l’onglet AST affiche un arbre partiel correspondant uniquement aux nodes et dépendances menant à ce Backtest,
+
+    cette vue permet une lecture locale, pédagogique et focalisée,
+
+    elle aide à raisonner sur un Backtest pris isolément.
+
+Ces arbres AST “par Backtest” sont :
+
+    des vues dérivées,
+
+    calculées à partir de l’AST global,
+
+    strictement en lecture seule.
+
+⚠️ Ils n’ont aucune existence opérationnelle :
+
+    ils ne sont jamais sérialisés comme AST exécutables,
+
+    ils ne sont jamais utilisés pour générer un plan d’exécution,
+
+    ils ne participent ni à la compilation, ni au runtime.
+
+AST global comme étape intermédiaire incontournable
+
+La génération et la validation de l’AST global constituent une étape intermédiaire obligatoire entre l’édition de la stratégie et toute exécution.
+
+Le pipeline conceptuel est strictement le suivant :
+
+    AST global
+
+        unique
+
+        complet
+
+        indépendant des vues UI
+
+    Validation structurelle
+
+        cohérence du graphe
+
+        règles métier
+
+    Compilation
+
+        transformation déterministe de l’AST global
+
+    Plan d’exécution unique
+
+        exécutable
+
+        synchronisé
+
+        indépendant de l’interface
+
+    RUN
+
+        exécution du plan
+
+        streaming des résultats
+
+Aucun plan d’exécution ne peut être généré :
+
+    à partir d’un AST partiel,
+
+    à partir d’une vue par Backtest,
+
+    ou à partir d’un sous‑graphe dépendant de l’état de l’UI.
+
+Séparation stricte entre vue et exécution
+
+Cette architecture repose sur une séparation claire des responsabilités :
+Élément	Rôle
+AST global	Source de vérité de la stratégie
+AST View (par Backtest)	Aide à la lecture et à la compréhension
+Plan d’exécution	Artefact exécutable unique
+RUN	Déclenchement de l’exécution
+WebSocket	Canal d’observation des résultats
+
+Les vues AST améliorent la lisibilité humaine,
+mais l’exécution reste exclusivement fondée sur l’AST global.
+Principe directeur
+
+    L’utilisateur peut raisonner localement sur un Backtest via une vue AST dédiée,
+    mais le moteur ne raisonne et n’exécute qu’à partir d’un AST global unique.

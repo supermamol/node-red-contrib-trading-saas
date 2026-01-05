@@ -389,3 +389,240 @@ WebSocket	Observation
     L’utilisateur peut raisonner localement via des vues,
     mais le moteur ne raisonne et n’exécute qu’à partir d’un AST global unique.
 
+
+    📘 Architecture Flow / Strategy / Deploy / AST / Run
+1. Objectif
+
+Cette documentation décrit le cycle de vie complet d’une stratégie de trading, depuis l’édition graphique du flow jusqu’à l’exécution d’un run, en garantissant :
+
+    cohérence métier
+
+    reproductibilité des runs
+
+    absence d’ambiguïté entre design et exécution
+
+    séparation claire des responsabilités UI / Backend
+
+2. Concepts clés
+2.1 Strategy (agrégat racine)
+
+    Entité métier principale
+
+    Appartient à un utilisateur
+
+    Encapsule :
+
+        des métadonnées (nom, description, statut, etc.)
+
+        un flow courant
+
+        des AST dérivés
+
+        des runs
+
+👉 Toute action métier part de la Strategy
+2.2 Flow courant
+
+    Représentation graphique (type Node‑RED)
+
+    État mutable
+
+    Édité côté UI
+
+    Persisté en base comme état interne de la Strategy
+
+    Peut être :
+
+        incomplet
+
+        non valide
+
+        non exécutable
+
+👉 Le flow courant est un brouillon persistant
+2.3 Deploy (au sens Node‑RED)
+
+    Action explicite de validation technique
+
+    Vérifie que le flow courant est :
+
+        cohérent
+
+        connecté
+
+        exécutable
+
+    Produit un flow déployé (snapshot validé)
+
+⚠️ Le deploy :
+
+    ❌ n’est pas une sauvegarde
+
+    ❌ ne modifie pas la base de données métier
+
+    ❌ ne déclenche pas d’AST automatiquement
+
+👉 Le deploy est un pré‑requis, pas un effet de bord
+2.4 AST (Abstract Syntax Tree)
+
+    Représentation figée et exécutable d’un flow
+
+    Généré uniquement à partir d’un flow déployé
+
+    Immuable
+
+    Identifiable
+
+    Inspectable
+
+👉 Un AST est un snapshot exécutable du flow
+2.5 Run
+
+    Instance d’exécution
+
+    Pointe toujours vers un AST précis
+
+    Jamais vers :
+
+        un flow courant
+
+        une strategy directement
+
+👉 Un Run est reproductible et traçable
+3. Règle centrale (canonique)
+
+    Un flow modifié invalide le deploy courant.
+    Un AST doit toujours être généré à partir d’un deploy “tout neuf”.
+
+Cette règle suffit à garantir :
+
+    absence d’AST obsolète
+
+    absence de runs ambigus
+
+    cohérence totale du système
+
+4. Séquence de référence (valide)
+4.1 Séquence correcte
+
+    L’utilisateur dispose d’un flow courant
+
+    Il clique sur Deploy
+
+    Il ne modifie plus le flow courant
+
+    Il clique sur Generate AST
+
+    Il peut consulter l’AST généré
+
+    Il clique sur Save my Run
+
+    Il peut exécuter ce run ou d’autres
+
+4.2 Séquence interdite (exemple)
+
+    Modifier le flow
+
+    Générer un AST sans redeploy
+
+    Sauvegarder un Run
+
+❌ Interdit : AST potentiellement incohérent
+❌ Interdit : Run non reproductible
+5. Invalidation automatique (implicite)
+
+Toute modification du flow courant entraîne :
+
+    invalidation du deploy courant
+
+    impossibilité de générer un AST
+
+    impossibilité de créer un Run
+
+👉 Aucune action ne doit corriger cela implicitement
+6. Responsabilités par couche
+6.1 UI
+
+    Édition du flow (local)
+
+    Gestion de l’état courant
+
+    Boutons explicites :
+
+        Save Strategy
+
+        Deploy
+
+        Generate AST
+
+        Save Run
+
+    Activation / désactivation des actions selon l’état
+
+6.2 Backend
+
+    Persistance :
+
+        Strategy
+
+        Flow courant
+
+        AST
+
+        Run
+
+    Vérification des règles :
+
+        AST uniquement depuis un deploy valide
+
+        Run uniquement depuis un AST existant
+
+    Aucune action implicite (pas d’auto‑deploy)
+
+7. États implicites de la Strategy
+
+Sans forcément les matérialiser en base, la Strategy peut être vue comme ayant :
+
+    flow_dirty = true | false
+
+    deploy_valid = true | false
+
+    ast_ready = true | false
+
+Transitions
+
+    Edit flow → flow_dirty = true
+
+    Deploy → flow_dirty = false, deploy_valid = true
+
+    Edit flow après deploy → deploy_valid = false
+
+    Generate AST → ast_ready = true
+
+8. Règles d’or (à ne jamais casser)
+
+    ❌ Un Run ne déclenche jamais un Deploy
+
+    ❌ Un Run ne génère jamais un AST
+
+    ❌ Un Deploy n’écrit jamais en base métier
+
+    ✔ Chaque action est explicite
+
+    ✔ Chaque snapshot est traçable
+
+    ✔ Chaque exécution est reproductible
+
+9. Résumé exécutif
+
+    Flow = brouillon éditable
+    Deploy = validation technique explicite
+    AST = snapshot exécutable figé
+    Run = exécution reproductible
+
+👉 Modifier le flow invalide tout ce qui dépend de lui.
+👉 Rien n’est implicite. Tout est volontaire.
+
+
+
+
